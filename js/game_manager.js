@@ -3,20 +3,78 @@ function GameManager(size, InputManager, Actuator, StorageManager) {
   this.inputManager   = new InputManager;
   this.storageManager = new StorageManager;
   this.actuator       = new Actuator;
-
+//
+  this.lastState = null; // Lưu trạng thái trước đó cho chức năng undo
+  this.canUndo = true; // Có thể undo hay không
+  this.canDeleteTwo = true; // Có thể xóa số 2 hay không
   this.startTiles     = 2;
-
+  this.canDeleteTwo = this.storageManager.getCanDeleteTwo(); // Lấy trạng thái từ storage
   this.inputManager.on("move", this.move.bind(this));
   this.inputManager.on("restart", this.restart.bind(this));
   this.inputManager.on("keepPlaying", this.keepPlaying.bind(this));
-
+  this.inputManager.on("undo", this.undo.bind(this));
+  this.inputManager.on("deleteTwo", this.deleteAllTwo.bind(this));
   this.setup();
 }
+//
+GameManager.prototype.deleteAllTwo = function () {
+  if (!this.canDeleteTwo) return;
+  
+  var hasChanges = false;
+  this.grid.eachCell((x, y, tile) => {
+    if (tile && tile.value === 2) {
+      this.grid.removeTile(tile);
+      hasChanges = true;
+    }
+  });
+  
+  if (hasChanges) {
+    this.canDeleteTwo = false;
+    this.storageManager.setCanDeleteTwo(false); // Lưu trạng thái mới
+    this.addRandomTile();
+    this.actuate();
+  }
+};
+// Thêm phương thức undo
+GameManager.prototype.undo = function () {
+  if (this.lastState && this.canUndo) {
+    this.grid = new Grid(this.lastState.grid.size, this.lastState.grid.cells);
+    this.score = this.lastState.score;
+    this.over = this.lastState.over;
+    this.won = this.lastState.won;
+    this.keepPlaying = this.lastState.keepPlaying;
+    this.lastState = null;
+    this.canUndo = false; // Không thể undo cho đến move tiếp theo
+    this.actuate();
+  }
+};
 
+// Thêm phương thức xóa tất cả số 2
+GameManager.prototype.deleteAllTwo = function () {
+  if (!this.canDeleteTwo) return;
+  
+  var hasChanges = false;
+  this.grid.eachCell((x, y, tile) => {
+    if (tile && tile.value === 2) {
+      this.grid.removeTile(tile);
+      hasChanges = true;
+    }
+  });
+  
+  if (hasChanges) {
+    this.canDeleteTwo = false;
+    this.storageManager.setCanDeleteTwo(false); // Lưu trạng thái mới
+    this.addRandomTile();
+    this.actuate();
+  }
+};
 // Restart the game
 GameManager.prototype.restart = function () {
   this.storageManager.clearGameState();
-  this.actuator.continueGame(); // Clear the game won/lost message
+  this.canDeleteTwo = true;
+  this.canUndo = true;
+  this.lastState = null;
+  this.actuator.continueGame();
   this.setup();
 };
 
@@ -105,7 +163,8 @@ GameManager.prototype.serialize = function () {
     score:       this.score,
     over:        this.over,
     won:         this.won,
-    keepPlaying: this.keepPlaying
+    keepPlaying: this.keepPlaying,
+    canDeleteTwo: this.canDeleteTwo // Thêm vào object serialize
   };
 };
 
@@ -128,6 +187,14 @@ GameManager.prototype.moveTile = function (tile, cell) {
 
 // Move tiles on the grid in the specified direction
 GameManager.prototype.move = function (direction) {
+  // Lưu trạng thái trước khi di chuyển
+  this.lastState = {
+    grid: this.grid.serialize(),
+    score: this.score,
+    over: this.over,
+    won: this.won,
+    keepPlaying: this.keepPlaying
+  };
   // 0: up, 1: right, 2: down, 3: left
   var self = this;
 
@@ -180,12 +247,13 @@ GameManager.prototype.move = function (direction) {
   });
 
   if (moved) {
+    this.canUndo = true; // Có thể undo sau mỗi move
     this.addRandomTile();
-
+    
     if (!this.movesAvailable()) {
-      this.over = true; // Game over!
+      this.over = true;
     }
-
+    
     this.actuate();
   }
 };

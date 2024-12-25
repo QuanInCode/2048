@@ -67,12 +67,24 @@ KeyboardInputManager.prototype.listen = function () {
       self.restart.call(self, event);
     }
   });
-
+ // Thêm phím tắt cho Undo (Z) và Delete Two (D)
+ document.addEventListener("keydown", function (event) {
+  if (!modifiers) {
+    if (event.which === 90) { // Z key
+      event.preventDefault();
+      self.emit("undo");
+    } else if (event.which === 68) { // D key
+      event.preventDefault();
+      self.emit("deleteTwo");
+    }
+  }
+});
   // Respond to button presses
   this.bindButtonPress(".retry-button", this.restart);
   this.bindButtonPress(".restart-button", this.restart);
   this.bindButtonPress(".keep-playing-button", this.keepPlaying);
-
+  this.bindButtonPress(".Undo-button", this.undo);
+  this.bindButtonPress(".DeleteAll-button", this.deleteTwo);
   // Respond to swipe events
   var touchStartClientX, touchStartClientY;
   var gameContainer = document.getElementsByClassName("game-container")[0];
@@ -141,4 +153,13 @@ KeyboardInputManager.prototype.bindButtonPress = function (selector, fn) {
   var button = document.querySelector(selector);
   button.addEventListener("click", fn.bind(this));
   button.addEventListener(this.eventTouchend, fn.bind(this));
+};
+KeyboardInputManager.prototype.undo = function (event) {
+  event.preventDefault();
+  this.emit("undo");
+};
+
+KeyboardInputManager.prototype.deleteTwo = function (event) {
+  event.preventDefault();
+  this.emit("deleteTwo");
 };

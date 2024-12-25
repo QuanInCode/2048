@@ -33,8 +33,23 @@ HTMLActuator.prototype.actuate = function (grid, metadata) {
     }
 
   });
+   // Cập nhật trạng thái các nút
+   this.updateButtons(metadata);
 };
 
+//Cập nhật trạng thái các nút
+HTMLActuator.prototype.updateButtons = function (metadata) {
+  var undoButton = document.querySelector(".undo-button");
+  var deleteTwoButton = document.querySelector(".delete-two-button");
+  
+  if (undoButton) {
+    undoButton.classList.toggle("disabled", !metadata.canUndo);
+  }
+  
+  if (deleteTwoButton) {
+    deleteTwoButton.classList.toggle("disabled", !metadata.canDeleteTwo);
+  }
+};
 // Continues the game (both restart and keep playing)
 HTMLActuator.prototype.continueGame = function () {
   this.clearMessage();
